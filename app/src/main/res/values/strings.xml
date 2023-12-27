@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Clicador</string>
     <string name="msg_teste" >Teste OK!</string>
+    <string name="result_text">Seu tempo de reação é: %.2f segundos</string>
 </resources>
