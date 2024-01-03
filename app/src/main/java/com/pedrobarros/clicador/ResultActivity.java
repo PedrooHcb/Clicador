@@ -1,7 +1,10 @@
 package com.pedrobarros.clicador;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
@@ -26,7 +29,10 @@ import java.io.InputStreamReader;
 public class ResultActivity extends AppCompatActivity {
     private TextView jokeTextView;
 
+    private MyDBHelper dbHelper;
     private static final String FILENAME = "time_data.txt";
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,13 +59,14 @@ public class ResultActivity extends AppCompatActivity {
         TextView timeTextView = findViewById(R.id.tvResult);
         timeTextView.setText("Tempo: " + timeTaken + " milissegundos");
 
-        // Salvar o tempo em um arquivo
-        saveTimeToFile(timeTaken);
+        dbHelper = new MyDBHelper(this);
+        // Salvar o tempo no banco de dados
+        saveTimeToDatabase(timeTaken);
 
         // Ler o tempo do arquivo
-        String storedTime = readTimeFromFile();
-        if (storedTime != null) {
-            Toast.makeText(this, "Tempo armazenado: " + storedTime, Toast.LENGTH_SHORT).show();
+        long storedTime = readTimeFromDatabase();
+        if (storedTime > 0) {
+            Toast.makeText(this, "Tempo armazenado no banco de dados: " + storedTime, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -84,36 +91,29 @@ public class ResultActivity extends AppCompatActivity {
         queue.add(jsonObjectRequest);
     }
     // PERSISTÊNCIA
-    private void saveTimeToFile(long timeTaken) {
-        try {
-            FileOutputStream fos = openFileOutput(FILENAME, Context.MODE_PRIVATE);
-            String data = String.valueOf(timeTaken);
-            fos.write(data.getBytes());
-            fos.close();
-            Toast.makeText(this, "Tempo salvo localmente", Toast.LENGTH_SHORT).show();
-        } catch (IOException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Erro ao salvar o tempo", Toast.LENGTH_SHORT).show();
-        }
+    private void saveTimeToDatabase(long timeTaken) {
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put("time", timeTaken);
+
+        long newRowId = db.insert("time_table", null, values);
     }
 
-    private String readTimeFromFile() {
-        try {
-            FileInputStream fis = openFileInput(FILENAME);
-            InputStreamReader inputStreamReader = new InputStreamReader(fis);
-            BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
-            StringBuilder stringBuilder = new StringBuilder();
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                stringBuilder.append(line).append("\n");
-            }
-            fis.close();
-            return stringBuilder.toString();
-        } catch (IOException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Erro ao ler o tempo", Toast.LENGTH_SHORT).show();
-            return null;
+    private long readTimeFromDatabase() {
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+
+        String[] projection = {"time"};
+        Cursor cursor = db.query("time_table", projection, null, null, null, null, null);
+
+        long storedTime = 0;
+
+        if (cursor.moveToNext()) {
+            storedTime = cursor.getLong(cursor.getColumnIndexOrThrow("time"));
         }
+
+        cursor.close();
+        return storedTime;
     }
 }
 
